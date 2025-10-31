@@ -2,7 +2,7 @@ pipeline {
     agent {permanent}
 
     environment {
-        REPO_URL = "https://github.com/eduval/Kelownatrails.git"
+        REPO_URL = "https://github.com/Yas-Xavier/Kelownatrails/tree/patch-1"
         PROD_ENV1 = "ec2-user@13.221.252.16"
         PROD_ENV2 = "ec2-user@54.167.94.162"
         SSH_KEY = "ass7"
