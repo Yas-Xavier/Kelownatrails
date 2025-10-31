@@ -1,32 +1,68 @@
-pipeline{
-    agent any
+pipeline {
+    agent {permanent}
+
     environment {
-    FIREBASE_DEPLOY_TOKEN = credentials('firebase-token')
+        REPO_URL = "https://github.com/eduval/Kelownatrails.git"
+        PROD_ENV1 = "ec2-user@13.221.252.16"
+        PROD_ENV2 = "ec2-user@54.167.94.162"
+        SSH_KEY = "ass7"
     }
 
- stages{
-        stage('Building'){
-            steps{
-           // sh 'npm install -g firebase-tools'
-                echo 'Biulding...'
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Cloning repository...'
+                git branch: 'master', url: "${REPO_URL}"
             }
-        } 
-        stage('Testing Environment'){
-            steps{
-            sh 'firebase deploy -P devops-proj-testing --token "$FIREBASE_DEPLOY_TOKEN"'
-            input message: 'After testing. Do you want to continue with Staging Environment? (Click "Proceed" to continue)'
+        }
+
+        stage('Build Application') {
+            steps {
+                echo 'Building project...'
+                sh 'ls -l'
             }
-        } 
-        stage('Staging Environment'){
-            steps{
-             sh 'firebase deploy -P devops-proj-staging --token "$FIREBASE_DEPLOY_TOKEN"'
+        }
+
+        stage('Deploy to PROD_ENV1') {
+            steps {
+                echo 'Deploying to Production Env 1...'
+                sshagent (credentials: ["${SSH_KEY}"]) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no $PROD_ENV1 "
+                            sudo rm -rf /var/www/html/*
+                            sudo git clone ${REPO_URL} /var/www/html
+                            sudo systemctl restart nginx
+                        "
+                    '''
+                }
             }
-        } 
-        stage('Production Environment'){
-            steps{
-            sh 'firebase deploy -P devops-proj-production-bcfd9 --token "$FIREBASE_DEPLOY_TOKEN"'
+        }
+
+        stage('Deploy to PROD_ENV2') {
+            steps {
+                echo 'Deploying to Production Env 2...'
+                sshagent (credentials: ["${SSH_KEY}"]) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no $PROD_ENV2 "
+                            sudo rm -rf /var/www/html/*
+                            sudo git clone ${REPO_URL} /var/www/html
+                            sudo systemctl restart nginx
+                        "
+                    '''
+                }
             }
-        } 
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                echo '✅ Deployment completed! Visit both EC2 public IPs via browser.'
+            }
+        }
     }
 
+    post {
+        failure {
+            echo '❌ Deployment failed — check console output.'
+        }
+    }
 }
